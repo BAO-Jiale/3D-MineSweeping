@@ -36,11 +36,12 @@ public class Main extends SimpleApplication{
     @Override
     public void simpleInitApp() {
         /* Initialize the game scene here */
-
+        
+        //load grass
         Spatial grass = assetManager.loadModel("Assets/Models/Grass/Grass.obj");
         Material materialGrass = assetManager.loadMaterial("Assets/Models/Grass/Grass.mtl");
         grass.setMaterial(materialGrass);
-        //加载草模型
+        
         for (int i=0;i< mineField.getRow();i++){
             for (int j=0;j< mineField.getCol();j++){
                 temp[i][j]=grass;
