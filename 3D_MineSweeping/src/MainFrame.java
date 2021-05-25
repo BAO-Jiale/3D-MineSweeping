@@ -127,16 +127,17 @@ public class MainFrame extends SimpleApplication {
 
             // Setup some preferred sizing since this will be the primary
             // element in our GUI
-            textField.setPreferredWidth(500);
+            textField.center();textField.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
+            textField.setPreferredWidth((float)0.25*cam.getWidth());
             textField.setPreferredLineCount(10);
 
             String fileName = textField.getText();
             System.out.println("fileName :"+fileName);
 
             save.addClickCommands(source1 -> {gameController.writeDataToFile(fileName);});
-            load.addClickCommands(source1 -> {gameController.readFileData(fileName);});
+            load.addClickCommands(source1 -> {gameController.readFileData(fileName);initScene();});
 
-            initScene();
+
         });
         patternBtn.addClickCommands(source -> {
             guiNode.detachChild(mainWindow);
@@ -146,7 +147,7 @@ public class MainFrame extends SimpleApplication {
             modeWin.center();
             modeWin.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
             modeWin.scale(2);
-            modeWin.addChild(new Label("Save Or Load"));
+            modeWin.addChild(new Label("Choose Your Mode"));
             Button easy = modeWin.addChild(new Button("Easy"));
             Button medium = modeWin.addChild(new Button("Medium"));
             Button hard = modeWin.addChild(new Button("Hard"));
@@ -171,12 +172,12 @@ public class MainFrame extends SimpleApplication {
                 initScene();
             });
             custom.addClickCommands(source1 -> {
-                textField = modeWin.addChild(new TextField("row col number"));
+                textField = modeWin.addChild(new TextField("Please input the row,col,minenumber"));
                 textField.setSingleLine(true);
                 document = textField.getDocumentModel();
                 textField.setPreferredWidth(500);
                 textField.setPreferredLineCount(10);
-                String []property = textField.getText().split(" ");
+                String []property = textField.getText().split(",");
                 int [] temp=new int[3];
                 for (int i=0;i<3;i++){temp[i]=Integer.parseInt(property[i]);}
                 mineField=new MineGenerator(temp[0],temp[1],temp[2]);
@@ -228,8 +229,6 @@ public class MainFrame extends SimpleApplication {
     }
 
 
-
-
     private void initScene(){
         initHUD();initAudio();
         //prepare for the picking
@@ -248,7 +247,7 @@ public class MainFrame extends SimpleApplication {
         /**
          * 创建一个自然音效（背景），这个音源会一直循环播放。
          */
-        AudioNode audioNature = new AudioNode(assetManager, "Sound/Environment/Ocean Waves.ogg", AudioData.DataType.Stream);
+        AudioNode audioNature = new AudioNode(assetManager, "main/resources/Audio/Background.wav", AudioData.DataType.Stream);
         audioNature.setLooping(true); // 循环播放
         audioNature.setPositional(false);
         audioNature.setVolume(3);// 音量
@@ -423,7 +422,7 @@ public class MainFrame extends SimpleApplication {
         debris.getParticleInfluencer().setVelocityVariation(.60f);
 
         //Audio explosion 爆炸音效
-        AudioNode explosion = new AudioNode(assetManager, "Sound/Effects/Gun.wav", AudioData.DataType.Buffer);
+        AudioNode explosion = new AudioNode(assetManager, "main/resources/Audio/Explosion.wav", AudioData.DataType.Buffer);
         explosion.setLooping(false);// 禁用循环播放
         explosion.setPositional(true);// 设置为非定位音源，玩家无法通过耳机辨别音源的位置。常用于背景音乐。
         explosion.center();
@@ -529,13 +528,32 @@ public class MainFrame extends SimpleApplication {
         simpleInitApp();
     }
 
+    public void victoryEffect(){
 
 
 
+        AudioNode td = new AudioNode(assetManager, "main/resources/Audio/Explosion.wav", AudioData.DataType.Buffer);
+        td.setLooping(false);// 禁用循环播放
+        td.setPositional(false);// 设置为非定位音源，玩家无法通过耳机辨别音源的位置。常用于背景音乐。
+        td.setVolume(2);
+        td.play();
 
+        AudioNode audioWin = new AudioNode(assetManager, "main/resources/Audio/Cyka Blyat.wav", AudioData.DataType.Stream);
+        audioWin.setLooping(true); // 循环播放
+        audioWin.setPositional(false);
+        audioWin.setVolume(3);// 音量
+        audioWin.play(); // 持续播放
+        // 将效果添加到场景中
+        new Thread(() -> {
+            //add the effect
+            enqueue(() -> {
 
+                rootNode.attachChild(td);
+                rootNode.attachChild(audioWin);
+            });
+        }).start();
 
-
+    }
 
 
 
