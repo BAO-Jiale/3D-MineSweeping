@@ -328,21 +328,21 @@ public class MainFrame extends SimpleApplication {
         shootables.attachChild(g);
     }
     //To reload each model
-    private void reDraw(Spatial g,int row,int col) {
+    private void reDraw(int row,int col) {
         new Thread(() -> {
             //通知主线程把场景图清除
             enqueue(() -> {
-                shootables.detachChild(g);
+                shootables.detachChild(temp[row][col]);
             });
         }).start();
 
         // 开启一个子线程
         new Thread(() -> {
             // 在子线程中导入模型
-            draw(g,row,col);
+            draw(temp[row][col],row,col);
             // 通知主线程，将模型添加到场景图中。
             enqueue(() -> {
-                shootables.attachChild(g);
+                shootables.attachChild(temp[row][col]);
             });
         }).start();
     }
@@ -475,7 +475,7 @@ public class MainFrame extends SimpleApplication {
             for (int j=0;j< mineField.getCol();j++){
                 if (status[i][j].equals(Status.Covered_with_Mine)){status[i][j]=Status.Mine;}
                 if (status[i][j].equals(Status.Covered_without_Mine)){status[i][j]=Status.Clear;}
-                reDraw(temp[i][j],i,j);
+                reDraw(i,j);
             }
         }
     }
@@ -491,12 +491,12 @@ public class MainFrame extends SimpleApplication {
                 gameController.getOnTurnPlayer().costScore();
                 makeExplosion(i,j);
                 status[i][j]=Status.Mine;
-                reDraw(temp[i][j],i,j);
+                reDraw(i,j);
             }
             if (status[i][j].equals(Status.Covered_without_Mine)){status[i][j]=Status.Clear;}
             gameController.addOpenCount();
         }
-        reDraw(temp[i][j],i,j);
+        reDraw(i,j);
 
         gameController.nextTurn();
     }
@@ -510,7 +510,7 @@ public class MainFrame extends SimpleApplication {
             gameController.getOnTurnPlayer().addMistake();
             status[i][j]=Status.Clear;
         }
-        reDraw(temp[i][j],i,j);
+        reDraw(i,j);
         gameController.nextTurn();
     }
     public void onRestart(){
@@ -519,7 +519,7 @@ public class MainFrame extends SimpleApplication {
                 if (status[i][j].equals(Status.Mine)){status[i][j]=Status.Covered_with_Mine;}
                 if (status[i][j].equals(Status.Clear)){status[i][j]=Status.Covered_without_Mine;}
                 if (status[i][j].equals(Status.Flag)){status[i][j]=Status.Covered_with_Mine;}
-                reDraw(temp[i][j],i,j);
+                reDraw(i,j);
             }
         }
         gameController.setMine_Left(mineField.getNumber());
