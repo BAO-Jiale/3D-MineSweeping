@@ -13,21 +13,14 @@ import com.jme3.math.ColorRGBA;
 import com.jme3.math.FastMath;
 import com.jme3.math.Vector3f;
 import com.jme3.renderer.RenderManager;
-import com.jme3.scene.Node;
 import com.jme3.scene.Spatial;
 import com.jme3.util.SkyFactory;
 
 import com.simsilica.lemur.*;
-import com.simsilica.lemur.core.VersionedReference;
 import com.simsilica.lemur.event.DefaultMouseListener;
 import com.simsilica.lemur.event.MouseEventControl;
 import com.simsilica.lemur.style.BaseStyles;
-import com.simsilica.lemur.style.Styles;
 import com.simsilica.lemur.text.DocumentModel;
-import com.simsilica.lemur.text.DocumentModelFilter;
-import org.lwjgl.input.Cursor;
-
-import javax.swing.*;
 
 
 public class MainFrame extends SimpleApplication {
@@ -35,7 +28,6 @@ public class MainFrame extends SimpleApplication {
     public static MineGenerator mineField=new MineGenerator("Professional");
     public Spatial[][]temp=new Spatial[mineField.getRow()][mineField.getCol()];
     public Status [][]status=mineField.getMineField();
-    Node shootables;
 
     private TextField textField;
     private DocumentModel document;
@@ -49,7 +41,7 @@ public class MainFrame extends SimpleApplication {
                 SkyFactory.EnvMapType.CubeMap);// 贴图类型
         rootNode.attachChild(sky);
 
-        makeCross();
+        //makeCross();
 
         //set camera
         cam.setLocation(new Vector3f(0,0,50.0f));
@@ -88,16 +80,22 @@ public class MainFrame extends SimpleApplication {
         GuiGlobals.getInstance().getStyles().setDefaultStyle("glass");
 
         // 创建一个Container作为窗口中其他GUI元素的容器
+        Container operationWin = new Container();
+        guiNode.attachChild(operationWin);
+        operationWin.center();
+        operationWin.setLocalTranslation(0, (float)(0.5*cam.getHeight()+0.5*operationWin.getSize().getY()),0);
+        operationWin.addChild(new Label("Operations"));
+        Button cheatBtn = operationWin.addChild(new Button("Cheat"));
+        Button pauseBtn = operationWin.addChild(new Button("Pause"));
+        Button restartBtn = operationWin.addChild(new Button("Restart"));
+        Button newGameBtn = operationWin.addChild(new Button("New Game"));
+
         Container mainWindow = new Container();
         guiNode.attachChild(mainWindow);
-        Button cheatBtn =new Button("Cheat");
-        Button pauseBtn =new Button("Pause");
-        Button restartBtn =new Button("Restart");
-        Button newGameBtn =new Button("New Game");
         // 设置窗口在屏幕上的坐标
         // 注意：Lemur的GUI元素是以控件左上角为原点，向右、向下生成的。
         // 然而，作为一个Spatial，它在GuiNode中的坐标原点依然是屏幕的左下角。
-        mainWindow.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
+        mainWindow.setLocalTranslation((float)(0.5*cam.getWidth()+0.5*mainWindow.getSize().getX()), (float)(0.5*cam.getHeight()+0.5*mainWindow.getSize().getY()), 0);
         mainWindow.scale(2);
         // 添加一个Label控件
         mainWindow.addChild(new Label("Menu"));
@@ -107,18 +105,23 @@ public class MainFrame extends SimpleApplication {
         Button patternBtn = mainWindow.addChild(new Button("Pattern"));
         Button introductionBtn = mainWindow.addChild(new Button("Intro"));
 
-
         loadBtn.addClickCommands(source -> {
             guiNode.detachChild(mainWindow);
 
             Container loadWin=new Container();
             guiNode.attachChild(loadWin);
             loadWin.center();
-            loadWin.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
+            loadWin.setLocalTranslation(0, (float)cam.getHeight(), 0);
             loadWin.scale(2);
             loadWin.addChild(new Label("Save Or Load"));
             Button save =loadWin.addChild(new Button("Save"));
             Button load =loadWin.addChild(new Button("Load"));
+            Button back =loadWin.addChild(new Button("Back To Menu"));
+
+            back.addClickCommands(source1 -> {
+                guiNode.detachChild(loadWin);
+                guiNode.attachChild(mainWindow);
+            });
 
             // Create a multiline text field with our document model
             textField = loadWin.addChild(new TextField("Input your file name here"));
@@ -145,31 +148,33 @@ public class MainFrame extends SimpleApplication {
             Container modeWin=new Container();
             guiNode.attachChild(modeWin);
             modeWin.center();
-            modeWin.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
+            modeWin.setLocalTranslation(0, (float)cam.getHeight(), 0);
             modeWin.scale(2);
             modeWin.addChild(new Label("Choose Your Mode"));
             Button easy = modeWin.addChild(new Button("Easy"));
             Button medium = modeWin.addChild(new Button("Medium"));
             Button hard = modeWin.addChild(new Button("Hard"));
             Button custom = modeWin.addChild(new Button("Custom"));
+            Button back =modeWin.addChild(new Button("Back To Menu"));
 
-            //Todo:set location & size
-            easy.center();medium.center();hard.center();custom.center();
-
+            back.addClickCommands(source1 -> {
+                guiNode.detachChild(modeWin);
+                guiNode.attachChild(mainWindow);
+            });
             easy.addClickCommands(source1 -> {
                 mineField=new MineGenerator("Junior");
                 guiNode.detachChild(modeWin);
-                initScene();
+                initScene();initHUD();
             });
             medium.addClickCommands(source1 -> {
                 mineField=new MineGenerator("Senior");
                 guiNode.detachChild(modeWin);
-                initScene();
+                initScene();initHUD();
             });
             hard.addClickCommands(source1 -> {
                 mineField=new MineGenerator("Professional");
                 guiNode.detachChild(modeWin);
-                initScene();
+                initScene();initHUD();
             });
             custom.addClickCommands(source1 -> {
                 textField = modeWin.addChild(new TextField("Please input the row,col,minenumber"));
@@ -177,12 +182,16 @@ public class MainFrame extends SimpleApplication {
                 document = textField.getDocumentModel();
                 textField.setPreferredWidth(500);
                 textField.setPreferredLineCount(10);
-                String []property = textField.getText().split(",");
-                int [] temp=new int[3];
-                for (int i=0;i<3;i++){temp[i]=Integer.parseInt(property[i]);}
-                mineField=new MineGenerator(temp[0],temp[1],temp[2]);
-                guiNode.detachChild(modeWin);
-                initScene();
+
+                Button ok =modeWin.addChild(new Button("Save"));
+                ok.addClickCommands(source2->{
+                    String []property = textField.getText().split(",");
+                    int [] temp=new int[3];
+                    for (int i=0;i<3;i++){temp[i]=Integer.parseInt(property[i]);}
+                    mineField=new MineGenerator(temp[0],temp[1],temp[2]);
+                    guiNode.detachChild(modeWin);
+                    initScene();initHUD();
+                });
             });
         });
         introductionBtn.addClickCommands(source -> {
@@ -191,14 +200,17 @@ public class MainFrame extends SimpleApplication {
             Container introWin=new Container();
             guiNode.attachChild(introWin);
             introWin.center();
-            introWin.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
+            introWin.setLocalTranslation(0, (float)cam.getHeight(), 0);
             introWin.scale(2);
             introWin.addChild(new Label("About Game"));
             Button rule = introWin.addChild(new Button("Rule"));
             Button we = introWin.addChild(new Button("About Us"));
-            we.center();rule.center();
-            //Todo:set local transform
+            Button back =introWin.addChild(new Button("Back To Menu"));
 
+            back.addClickCommands(source1 -> {
+                guiNode.detachChild(introWin);
+                guiNode.attachChild(mainWindow);
+            });
             rule.addClickCommands(source1 -> {
                 textField = introWin.addChild(
                         new TextField(
@@ -213,7 +225,7 @@ public class MainFrame extends SimpleApplication {
                 textField.setPreferredLineCount(10);
             });
             we.addClickCommands(source1 -> {
-                textField = introWin.addChild(new TextField("GaoSi  and  Bao JiaLe"));
+                textField = introWin.addChild(new TextField("Developer:GAO Si & BAO Jiale"));
                 textField.setSingleLine(true);
                 document = textField.getDocumentModel();
                 textField.setPreferredWidth(500);
@@ -231,22 +243,17 @@ public class MainFrame extends SimpleApplication {
 
     private void initScene(){
         initHUD();initAudio();
-        //prepare for the picking
-        shootables =new Node("Shootables");
-        rootNode.attachChild(shootables);
-
         //load all the minefield
         for (int i =0;i< mineField.getRow();i++){
             for (int j=0;j< mineField.getCol();j++){
                 addListenerToSpatial(temp[i][j],i,j);
-                draw(temp[i][j],i,j);
+                temp[i][j]=draw(i,j);
+                rootNode.attachChild(temp[i][j]);
             }
         }
     }
     private void initAudio() {
-        /**
-         * 创建一个自然音效（背景），这个音源会一直循环播放。
-         */
+        // 创建一个自然音效（背景），这个音源会一直循环播放。
         AudioNode audioNature = new AudioNode(assetManager, "main/resources/Audio/Background.wav", AudioData.DataType.Stream);
         audioNature.setLooping(true); // 循环播放
         audioNature.setPositional(false);
@@ -307,7 +314,8 @@ public class MainFrame extends SimpleApplication {
     }
 
     //To load model according to the Status
-    public void draw(Spatial g,int row,int col){
+    public Spatial draw(int row,int col){
+        Spatial g = drawGrass();
         if (status[row][col].equals(Status.Covered_with_Mine)|status[row][col].equals(Status.Covered_without_Mine)){
             g=drawGrass();
         }
@@ -325,26 +333,23 @@ public class MainFrame extends SimpleApplication {
         float n=(float)(10.0*(col-5)+5.0);
         g.setLocalTranslation(m,0.0f,-n);
 
-        shootables.attachChild(g);
+        return g;
     }
     //To reload each model
-    private void reDraw(int row,int col) {
-        new Thread(() -> {
-            //通知主线程把场景图清除
-            enqueue(() -> {
-                shootables.detachChild(temp[row][col]);
-            });
-        }).start();
-
+    public void reDraw(int row,int col) {
         // 开启一个子线程
-        new Thread(() -> {
-            // 在子线程中导入模型
-            draw(temp[row][col],row,col);
-            // 通知主线程，将模型添加到场景图中。
-            enqueue(() -> {
-                shootables.attachChild(temp[row][col]);
-            });
-        }).start();
+        new Thread () {
+            public void run() {
+                // 在子线程中导入模型
+                final Spatial tem= draw(row,col);
+                // 通知主线程，将模型添加到场景图中。
+                enqueue(new Runnable() {
+                    public void run() {
+                        temp[row][col]=tem;
+                    }
+                });
+            }
+        }.start();
     }
 
     public void initHUD(){
@@ -431,7 +436,7 @@ public class MainFrame extends SimpleApplication {
 
         new Thread(() -> {
             //add the effect
-            enqueue(() -> {
+            this.enqueue(() -> {
                 rootNode.attachChild(fire);
                 rootNode.attachChild(debris);
                 rootNode.attachChild(explosion);
@@ -528,32 +533,6 @@ public class MainFrame extends SimpleApplication {
         simpleInitApp();
     }
 
-    public void victoryEffect(){
-
-
-
-        AudioNode td = new AudioNode(assetManager, "main/resources/Audio/Explosion.wav", AudioData.DataType.Buffer);
-        td.setLooping(false);// 禁用循环播放
-        td.setPositional(false);// 设置为非定位音源，玩家无法通过耳机辨别音源的位置。常用于背景音乐。
-        td.setVolume(2);
-        td.play();
-
-        AudioNode audioWin = new AudioNode(assetManager, "main/resources/Audio/Cyka Blyat.wav", AudioData.DataType.Stream);
-        audioWin.setLooping(true); // 循环播放
-        audioWin.setPositional(false);
-        audioWin.setVolume(3);// 音量
-        audioWin.play(); // 持续播放
-        // 将效果添加到场景中
-        new Thread(() -> {
-            //add the effect
-            enqueue(() -> {
-
-                rootNode.attachChild(td);
-                rootNode.attachChild(audioWin);
-            });
-        }).start();
-
-    }
 
 
 
