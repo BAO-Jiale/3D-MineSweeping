@@ -41,13 +41,12 @@ public class MainFrame extends SimpleApplication {
                 SkyFactory.EnvMapType.CubeMap);// 贴图类型
         rootNode.attachChild(sky);
 
-        makeCross();
-
         //set camera
         cam.setLocation(new Vector3f(0,0,50.0f));
         flyCam.setEnabled(true);
         flyCam.setMoveSpeed(50.0f);
         flyCam.setZoomSpeed(15.0f);
+        flyCam.setDragToRotate(true);
 
         //Set lights
         ColorRGBA colorRGBA=new ColorRGBA();
@@ -331,25 +330,18 @@ public class MainFrame extends SimpleApplication {
         g.center();
         float m=(float)(10.0*(row-5)+5.0);
         float n=(float)(10.0*(col-5)+5.0);
-        g.setLocalTranslation(m,0.0f,-n);
+        g.setLocalTranslation(m,0.0f,n);
 
         return g;
     }
     //To reload each model
     public void reDraw(int row,int col) {
-        // 开启一个子线程
-        new Thread () {
-            public void run() {
-                // 在子线程中导入模型
-                final Spatial tem= draw(row,col);
-                // 通知主线程，将模型添加到场景图中。
-                enqueue(new Runnable() {
-                    public void run() {
-                        temp[row][col]=tem;
-                    }
-                });
-            }
-        }.start();
+        this.enqueue (() -> {
+            //do what you want
+            rootNode.detachChild(temp[row][col]);
+            temp[row][col]=draw(row,col);
+            rootNode.attachChild(temp[row][col]);
+        });
     }
 
     public void initHUD(){
@@ -395,7 +387,7 @@ public class MainFrame extends SimpleApplication {
                 "Effects/Explosion/flame.png"));
         fire.setMaterial(mat_red);
         fire.center();
-        fire.setLocalTranslation(m,0.0f,-n);
+        fire.setLocalTranslation(m,0.0f,n);
         fire.setImagesX(2);
         fire.setImagesY(2); // 2x2 texture animation
         fire.setEndColor(  new ColorRGBA(1f, 0f, 0f, 1f));   // red
@@ -452,10 +444,8 @@ public class MainFrame extends SimpleApplication {
                 new DefaultMouseListener() {
                     @Override
                     protected void click(MouseButtonEvent event, Spatial target, Spatial capture ) {
-                        if( event.getButtonIndex() == MouseInput.BUTTON_LEFT ) {
-                            System.out.printf("Opened the grid (%d,%d)",row+1,col+1);onOpen(row,col);}
-                        if( event.getButtonIndex() == MouseInput.BUTTON_RIGHT ) {
-                            System.out.printf("Marked the grid (%d,%d)",row+1,col+1);onMark(row,col);}
+                        if( event.getButtonIndex() == MouseInput.BUTTON_LEFT ) {onOpen(row,col);}
+                        if( event.getButtonIndex() == MouseInput.BUTTON_RIGHT ) {onMark(row,col);}
                     }
                 });
     }
@@ -464,7 +454,7 @@ public class MainFrame extends SimpleApplication {
     public void onPause(){
         Container pauseWin=new Container();
         pauseWin.addChild(new Label("The Game Is Paused"));
-        pauseWin.center();
+        pauseWin.center();pauseWin.scale(2);
         pauseWin.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
         if (gameController.isPaused){
             //继续计时，窗口消失
@@ -488,6 +478,8 @@ public class MainFrame extends SimpleApplication {
     }
     public void onOpen(int i,int j){
         //prevent getting mine at the first try
+        if (status[i][j].equals(Status.Covered_with_Mine)|status[i][j].equals(Status.Covered_without_Mine)){
+            System.out.printf("Opened the grid (%d,%d)\n",j+1,i+1);
         if (gameController.getOpenCount()==1){
             while (status[i][j].equals(Status.Covered_with_Mine)){mineField.resetMine();}
             if (status[i][j].equals(Status.Covered_without_Mine)){status[i][j]=Status.Clear;}
@@ -498,16 +490,17 @@ public class MainFrame extends SimpleApplication {
                 gameController.getOnTurnPlayer().costScore();
                 makeExplosion(i,j);
                 status[i][j]=Status.Mine;
-                reDraw(i,j);
             }
             if (status[i][j].equals(Status.Covered_without_Mine)){status[i][j]=Status.Clear;}
             gameController.addOpenCount();
         }
         reDraw(i,j);
-
-        gameController.nextTurn();
+        gameController.nextTurn();}
     }
     public void onMark(int i,int j){
+        if (status[i][j].equals(Status.Covered_with_Mine)|status[i][j].equals(Status.Covered_without_Mine)){
+            System.out.printf("Marked the grid (%d,%d)\n",j+1,i+1);
+        }
         if (status[i][j].equals(Status.Covered_with_Mine)){
             gameController.find_mine();
             status[i][j]=Status.Flag;
