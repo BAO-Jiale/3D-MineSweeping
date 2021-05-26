@@ -41,7 +41,7 @@ public class MainFrame extends SimpleApplication {
                 SkyFactory.EnvMapType.CubeMap);// 贴图类型
         rootNode.attachChild(sky);
 
-        //makeCross();
+        makeCross();
 
         //set camera
         cam.setLocation(new Vector3f(0,0,50.0f));
@@ -246,9 +246,9 @@ public class MainFrame extends SimpleApplication {
         //load all the minefield
         for (int i =0;i< mineField.getRow();i++){
             for (int j=0;j< mineField.getCol();j++){
-                addListenerToSpatial(temp[i][j],i,j);
                 temp[i][j]=draw(i,j);
                 rootNode.attachChild(temp[i][j]);
+                addListenerToSpatial(i,j);
             }
         }
     }
@@ -447,13 +447,15 @@ public class MainFrame extends SimpleApplication {
     }
 
 
-    public void addListenerToSpatial(Spatial g,int row,int col){
-        MouseEventControl.addListenersToSpatial(g,
+    public void addListenerToSpatial(int row,int col){
+        MouseEventControl.addListenersToSpatial(temp[row][col],
                 new DefaultMouseListener() {
                     @Override
                     protected void click(MouseButtonEvent event, Spatial target, Spatial capture ) {
-                        if( event.getButtonIndex() == MouseInput.BUTTON_LEFT ) {onOpen(row,col);}
-                        if( event.getButtonIndex() == MouseInput.BUTTON_RIGHT ) {onMark(row,col);}
+                        if( event.getButtonIndex() == MouseInput.BUTTON_LEFT ) {
+                            System.out.printf("Opened the grid (%d,%d)",row+1,col+1);onOpen(row,col);}
+                        if( event.getButtonIndex() == MouseInput.BUTTON_RIGHT ) {
+                            System.out.printf("Marked the grid (%d,%d)",row+1,col+1);onMark(row,col);}
                     }
                 });
     }
@@ -532,6 +534,8 @@ public class MainFrame extends SimpleApplication {
     public void onNewGame(){
         simpleInitApp();
     }
+
+
 
 
 
