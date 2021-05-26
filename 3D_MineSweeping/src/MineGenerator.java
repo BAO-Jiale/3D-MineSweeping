@@ -61,14 +61,7 @@ public class MineGenerator {
         return chessboard;
     }
 
-    public MineGenerator(){this.Mine=mineGenerator(row,col,number);setMineField();}
-    public MineGenerator(String mode){
-        if (mode.equals("Junior")){this.row=9;this.col=9;this.number=10;}
-        if (mode.equals("Senior")){this.row=16;this.col=16;this.number=40;}
-        if (mode.equals("Professional")){this.row=16;this.col=30;this.number=99;}
-        this.Mine= mineGenerator(row,col,number);
-        setMineField();
-    }
+
     public MineGenerator(int row,int col,int number){
         this.row=row;
         this.col=col;

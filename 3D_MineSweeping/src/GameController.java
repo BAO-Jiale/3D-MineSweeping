@@ -56,13 +56,4 @@ public class GameController {
     }
     public void addOpenCount(){this.openCount++;}
 
-
-    public void readFileData(String fileName) {
-        //todo: read date from file
-
-    }
-
-    public void writeDataToFile(String fileName){
-        //todo: write data into file
-    }
 }

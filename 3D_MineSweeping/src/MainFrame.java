@@ -25,12 +25,20 @@ import com.simsilica.lemur.text.DocumentModel;
 
 public class MainFrame extends SimpleApplication {
     public static GameController gameController=new GameController(new Player(),new Player());
-    public static MineGenerator mineField=new MineGenerator("Professional");
-    public Spatial[][]temp=new Spatial[mineField.getRow()][mineField.getCol()];
-    public Status [][]status=mineField.getMineField();
+    private MineGenerator mineField;
+    public Spatial[][]temp;
+    public Status [][]status;
+
+    public void initMineField(int row,int col,int num){
+        mineField=new MineGenerator(row,col,num);
+        temp=new Spatial[row][col];
+        status=mineField.getMineField();
+    }
 
     private TextField textField;
     private DocumentModel document;
+    private TextField message;
+    private BitmapText hudText;
 
     @Override
     public void simpleInitApp() {
@@ -48,6 +56,7 @@ public class MainFrame extends SimpleApplication {
         flyCam.setZoomSpeed(15.0f);
         flyCam.setDragToRotate(true);
 
+        initHUD();
         //Set lights
         ColorRGBA colorRGBA=new ColorRGBA();
         DirectionalLight sun = new DirectionalLight();
@@ -62,7 +71,6 @@ public class MainFrame extends SimpleApplication {
     @Override
     public void simpleUpdate(float tpf) {
         /* Interact with game events in the main loop */
-        initHUD();
         listener.setLocation(cam.getLocation());
         listener.setRotation(cam.getRotation());
     }
@@ -99,6 +107,13 @@ public class MainFrame extends SimpleApplication {
         // 添加一个Label控件
         mainWindow.addChild(new Label("Menu"));
 
+        AudioNode mainMenu = new AudioNode(assetManager, "main/resources/Audio/Default Main Menu.wav", AudioData.DataType.Stream);
+        mainMenu.setLooping(true); // 循环播放
+        mainMenu.setPositional(false);
+        mainMenu.setVolume(3);// 音量
+        mainWindow.attachChild(mainMenu);
+        mainMenu.play();
+
         // 添加一个Button控件
         Button loadBtn = mainWindow.addChild(new Button("Save & Load"));
         Button patternBtn = mainWindow.addChild(new Button("Pattern"));
@@ -123,8 +138,8 @@ public class MainFrame extends SimpleApplication {
             });
 
             // Create a multiline text field with our document model
-            textField = loadWin.addChild(new TextField("Input your file name here"));
-            textField.setSingleLine(false);
+            textField = loadWin.addChild(new TextField("Input your file No. here"));
+            textField.setSingleLine(true);
             document = textField.getDocumentModel();
 
             // Setup some preferred sizing since this will be the primary
@@ -136,8 +151,8 @@ public class MainFrame extends SimpleApplication {
             String fileName = textField.getText();
             System.out.println("fileName :"+fileName);
 
-            save.addClickCommands(source1 -> {gameController.writeDataToFile(fileName);});
-            load.addClickCommands(source1 -> {gameController.readFileData(fileName);initScene();});
+            save.addClickCommands(source1 -> {writeDataToFile("main/load/"+fileName);});
+            load.addClickCommands(source1 -> {readFileData("main/load/"+fileName);mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();});
 
 
         });
@@ -161,19 +176,19 @@ public class MainFrame extends SimpleApplication {
                 guiNode.attachChild(mainWindow);
             });
             easy.addClickCommands(source1 -> {
-                mineField=new MineGenerator("Junior");
+                initMineField(9,9,10);
                 guiNode.detachChild(modeWin);
-                initScene();initHUD();
+                mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
             });
             medium.addClickCommands(source1 -> {
-                mineField=new MineGenerator("Senior");
+                initMineField(16,16,40);
                 guiNode.detachChild(modeWin);
-                initScene();initHUD();
+                mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
             });
             hard.addClickCommands(source1 -> {
-                mineField=new MineGenerator("Professional");
+                initMineField(16,30,99);
                 guiNode.detachChild(modeWin);
-                initScene();initHUD();
+                mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
             });
             custom.addClickCommands(source1 -> {
                 textField = modeWin.addChild(new TextField("Please input the row,col,minenumber"));
@@ -187,9 +202,9 @@ public class MainFrame extends SimpleApplication {
                     String []property = textField.getText().split(",");
                     int [] temp=new int[3];
                     for (int i=0;i<3;i++){temp[i]=Integer.parseInt(property[i]);}
-                    mineField=new MineGenerator(temp[0],temp[1],temp[2]);
+                    initMineField(temp[0],temp[1],temp[2]);
                     guiNode.detachChild(modeWin);
-                    initScene();initHUD();
+                    mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
                 });
             });
         });
@@ -237,11 +252,15 @@ public class MainFrame extends SimpleApplication {
         restartBtn.addClickCommands(source -> {onRestart();});
         newGameBtn.addClickCommands(source -> {onNewGame();});
 
+        pauseWin=new Container();
+        pauseWin.addChild(new Label("The Game Is Paused"));
+        pauseWin.center();pauseWin.scale(2);
+        pauseWin.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
     }
 
 
     private void initScene(){
-        initHUD();initAudio();
+        initAudio();
         //load all the minefield
         for (int i =0;i< mineField.getRow();i++){
             for (int j=0;j< mineField.getCol();j++){
@@ -256,7 +275,7 @@ public class MainFrame extends SimpleApplication {
         AudioNode audioNature = new AudioNode(assetManager, "main/resources/Audio/Background.wav", AudioData.DataType.Stream);
         audioNature.setLooping(true); // 循环播放
         audioNature.setPositional(false);
-        audioNature.setVolume(3);// 音量
+        audioNature.setVolume(0.5f);// 音量
         // 将音源添加到场景中
         rootNode.attachChild(audioNature);
 
@@ -284,7 +303,6 @@ public class MainFrame extends SimpleApplication {
         return flag;
     }
     public Spatial drawNum(int row,int col){
-        Spatial g ;
         Spatial zero = assetManager.loadModel("main/resources/Models/Numbers/0.j3o");
         Spatial one = assetManager.loadModel("main/resources/Models/Numbers/1.j3o");
         Spatial two = assetManager.loadModel("main/resources/Models/Numbers/2.j3o");
@@ -294,18 +312,18 @@ public class MainFrame extends SimpleApplication {
         Spatial six = assetManager.loadModel("main/resources/Models/Numbers/6.j3o");
         Spatial seven = assetManager.loadModel("main/resources/Models/Numbers/7.j3o");
         Spatial eight = assetManager.loadModel("main/resources/Models/Numbers/8.j3o");
-        switch (mineField.getMine()[row][col]){
-            case 0:g=zero;break;
-            case 1:g=one;break;
-            case 2:g=two;break;
-            case 3:g=three;break;
-            case 4:g=four;break;
-            case 5:g=five;break;
-            case 6:g=six;break;
-            case 7:g=seven;break;
-            case 8:g=eight;
-            default:g=zero;
-        }
+        Spatial g = switch (mineField.getMine()[row][col]) {
+            case 0 -> zero;
+            case 1 -> one;
+            case 2 -> two;
+            case 3 -> three;
+            case 4 -> four;
+            case 5 -> five;
+            case 6 -> six;
+            case 7 -> seven;
+            case 8 -> eight;
+            default -> zero;
+        };
         g.scale(6);
         g.rotate(-FastMath.PI / 2,0,0);
 
@@ -321,7 +339,7 @@ public class MainFrame extends SimpleApplication {
         if (status[row][col]==Status.Mine){
             g=drawMine();
         }
-        if (status[row][col]==Status.Flag){g=drawFlag();g.scale(0.25f);}
+        if (status[row][col]==Status.Flag){g=drawFlag();g.scale(0.5f);}
         if (status[row][col]==Status.Clear){
             g=drawNum(row,col);
         }
@@ -345,35 +363,27 @@ public class MainFrame extends SimpleApplication {
     }
 
     public void initHUD(){
-        BitmapText hudText = new BitmapText(guiFont, false);
+        hudText = new BitmapText(guiFont, false);
         hudText.setSize(1.2f*guiFont.getCharSet().getRenderedSize());      // font size
         hudText.setColor(ColorRGBA.Cyan);                             // font color
-        hudText.setText(String.format(
-                """
-                        Player 1:%s   Score:%d   Mistake:%d\s
-                        Player 2:%s   Score:%d   Mistake:%d\s
-                        Player On Turn:%s   Mines Left : %d\s"""
-                ,gameController.getP1().getUserName() , gameController.getP1().getScore() , gameController.getP1().getMistake()
-                ,gameController.getP2().getUserName() , gameController.getP2().getScore() , gameController.getP2().getMistake()
-                ,gameController.getOnTurnPlayer().getUserName(),gameController.getMine_Left()
-        ));             // the text
         hudText.setLocalTranslation(0, cam.getHeight()-hudText.getLineHeight(), 0); // position
         guiNode.attachChild(hudText);
     }
-    private void makeCross() {
-        // 采用Gui的默认字体，做个加号当准星。
-        BitmapText text = guiFont.createLabel("+");
-        text.setColor(ColorRGBA.Green);// 绿色
-
-        // 居中
-        float x = (cam.getWidth() - text.getLineWidth()) * 0.5f;
-        float y = (cam.getHeight() + text.getLineHeight()) * 0.5f;
-        text.setLocalTranslation(x, y, 0);
-        text.scale(2.0f);
-
-        guiNode.attachChild(text);
-
+    public void updateHUD(){
+            guiNode.attachChild(hudText);
+            hudText.setText(String.format(
+                    """
+                            Player 1:%s   Score:%d   Mistake:%d\s
+                            Player 2:%s   Score:%d   Mistake:%d\s
+                            Player On Turn:%s   Mines Left : %d\s"""
+                    ,gameController.getP1().getUserName() , gameController.getP1().getScore() , gameController.getP1().getMistake()
+                    ,gameController.getP2().getUserName() , gameController.getP2().getScore() , gameController.getP2().getMistake()
+                    ,gameController.getOnTurnPlayer().getUserName(),gameController.getMine_Left()
+            ));             // the text
+            guiNode.attachChild(hudText);
     }
+
+
     public void makeExplosion(int row,int col){
         //set position
         float m=(float)(10.0*(row-5)+5.0);
@@ -408,7 +418,7 @@ public class MainFrame extends SimpleApplication {
                 "Effects/Explosion/Debris.png"));
         debris.setMaterial(debris_mat);
         debris.center();
-        debris.setLocalTranslation(m,0.0f,-n);
+        debris.setLocalTranslation(m,0.0f,n);
         debris.setImagesX(3);
         debris.setImagesY(3); // 3x3 texture animation
         debris.setRotateSpeed(4);
@@ -421,10 +431,10 @@ public class MainFrame extends SimpleApplication {
         //Audio explosion 爆炸音效
         AudioNode explosion = new AudioNode(assetManager, "main/resources/Audio/Explosion.wav", AudioData.DataType.Buffer);
         explosion.setLooping(false);// 禁用循环播放
-        explosion.setPositional(true);// 设置为非定位音源，玩家无法通过耳机辨别音源的位置。常用于背景音乐。
+        explosion.setPositional(true);
         explosion.center();
         explosion.setLocalTranslation(m,0.0f,-n);
-        explosion.setVolume(2);
+        explosion.setVolume(200);
 
         new Thread(() -> {
             //add the effect
@@ -435,9 +445,30 @@ public class MainFrame extends SimpleApplication {
             });
         }).start();
 
+        explosion.play();
         debris.emitAllParticles();
     }
+    public void makeVictory(){
+        Container victoryFrame =new Container();
+        victoryFrame.center();
+        victoryFrame.setLocalTranslation((float)(0.5*cam.getWidth()+0.5*victoryFrame.getSize().getX()), (float)(0.5*cam.getHeight()+0.5*victoryFrame.getSize().getY()),0);
+        victoryFrame.addChild(new Label("Victory"));
 
+        AudioNode victorySound = new AudioNode(assetManager, "main/resources/Audio/Cyka Blyat.wav", AudioData.DataType.Buffer);
+        victorySound.setLooping(true);
+        victorySound.setPositional(false);
+        victorySound.setVolume(3);
+
+        new Thread(() -> {
+            //add the effect
+            this.enqueue(() -> {
+                guiNode.attachChild(victoryFrame);
+                rootNode.attachChild(victorySound);
+            });
+        }).start();
+
+        victorySound.play();
+    }
 
     public void addListenerToSpatial(int row,int col){
         MouseEventControl.addListenersToSpatial(temp[row][col],
@@ -451,11 +482,8 @@ public class MainFrame extends SimpleApplication {
     }
 
 
+    Container pauseWin;
     public void onPause(){
-        Container pauseWin=new Container();
-        pauseWin.addChild(new Label("The Game Is Paused"));
-        pauseWin.center();pauseWin.scale(2);
-        pauseWin.setLocalTranslation((float)0.5*cam.getWidth(), (float)0.5*cam.getHeight(), 0);
         if (gameController.isPaused){
             //继续计时，窗口消失
             guiNode.detachChild(pauseWin);
@@ -495,7 +523,9 @@ public class MainFrame extends SimpleApplication {
             gameController.addOpenCount();
         }
         reDraw(i,j);
-        gameController.nextTurn();}
+        gameController.nextTurn();
+        updateHUD();
+        }
     }
     public void onMark(int i,int j){
         if (status[i][j].equals(Status.Covered_with_Mine)|status[i][j].equals(Status.Covered_without_Mine)){
@@ -512,6 +542,7 @@ public class MainFrame extends SimpleApplication {
         }
         reDraw(i,j);
         gameController.nextTurn();
+        updateHUD();
     }
     public void onRestart(){
         for (int i =0;i< mineField.getRow();i++){
@@ -523,6 +554,7 @@ public class MainFrame extends SimpleApplication {
             }
         }
         gameController.setMine_Left(mineField.getNumber());
+        updateHUD();
     }
     public void onNewGame(){
         simpleInitApp();
@@ -530,7 +562,19 @@ public class MainFrame extends SimpleApplication {
 
 
 
+    /*
+        程序启动，提示用户选择功能
+        录入（记录）功能：要求用户输入文件名，如果没有此文件，则创建新文件/如果有，则直接写入
+        读取（阅读）功能：要求用户输入文件名，如果没有此文件，测提示找不到目标文件/如果有，则直接读取内容输出显示
+         */
+    public void readFileData(String fileName) {
+        //todo: read date from file
 
+    }
+
+    public void writeDataToFile(String fileName){//todo: write data into file
+
+    }
 
 
 
