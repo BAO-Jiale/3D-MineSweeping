@@ -45,7 +45,20 @@ public class Player {
     public int getScore(){
         return score;
     }
+
+    public void setScore(int score) {
+        this.score = score;
+    }
+
     public String getUserName(){ return userName; }
+
+    public void setUserName(String userName) {
+        this.userName = userName;
+    }
+
     public int getMistake(){ return mistake; }
 
+    public void setMistake(int mistake) {
+        this.mistake = mistake;
+    }
 }

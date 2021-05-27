@@ -22,6 +22,8 @@ import com.simsilica.lemur.event.MouseEventControl;
 import com.simsilica.lemur.style.BaseStyles;
 import com.simsilica.lemur.text.DocumentModel;
 
+import java.io.*;
+
 
 public class MainFrame extends SimpleApplication {
     public static GameController gameController=new GameController(new Player(),new Player());
@@ -110,15 +112,16 @@ public class MainFrame extends SimpleApplication {
         AudioNode mainMenu = new AudioNode(assetManager, "main/resources/Audio/Default Main Menu.wav", AudioData.DataType.Stream);
         mainMenu.setLooping(true); // 循环播放
         mainMenu.setPositional(false);
-        mainMenu.setVolume(3);// 音量
+        mainMenu.setVolume(0.5f);// 音量
         mainWindow.attachChild(mainMenu);
         mainMenu.play();
 
         // 添加一个Button控件
-        Button loadBtn = mainWindow.addChild(new Button("Save & Load"));
         Button patternBtn = mainWindow.addChild(new Button("Pattern"));
         Button introductionBtn = mainWindow.addChild(new Button("Intro"));
 
+        Button loadBtn = new Button("Save & Load");
+        operationWin.addChild(loadBtn);
         loadBtn.addClickCommands(source -> {
             guiNode.detachChild(mainWindow);
 
@@ -148,13 +151,12 @@ public class MainFrame extends SimpleApplication {
             textField.setPreferredWidth((float)0.25*cam.getWidth());
             textField.setPreferredLineCount(10);
 
-            String fileName = textField.getText();
-            System.out.println("fileName :"+fileName);
-
-            save.addClickCommands(source1 -> {writeDataToFile("main/load/"+fileName);});
-            load.addClickCommands(source1 -> {readFileData("main/load/"+fileName);mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();});
-
-
+            save.addClickCommands(source1 -> {
+                final String fileName = textField.getText();System.out.println("fileName :"+fileName);
+                writeDataToFile("main\\load\\"+fileName);});
+            load.addClickCommands(source1 -> {
+                final String fileName = textField.getText();System.out.println("fileName :"+fileName);
+                readFileData("main\\load\\"+fileName);mainMenu.stop();initAudio();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();});
         });
         patternBtn.addClickCommands(source -> {
             guiNode.detachChild(mainWindow);
@@ -178,17 +180,17 @@ public class MainFrame extends SimpleApplication {
             easy.addClickCommands(source1 -> {
                 initMineField(9,9,10);
                 guiNode.detachChild(modeWin);
-                mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
+                mainMenu.stop();initAudio();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
             });
             medium.addClickCommands(source1 -> {
                 initMineField(16,16,40);
                 guiNode.detachChild(modeWin);
-                mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
+                mainMenu.stop();initAudio();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
             });
             hard.addClickCommands(source1 -> {
                 initMineField(16,30,99);
                 guiNode.detachChild(modeWin);
-                mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
+                mainMenu.stop();initAudio();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
             });
             custom.addClickCommands(source1 -> {
                 textField = modeWin.addChild(new TextField("Please input the row,col,minenumber"));
@@ -204,7 +206,7 @@ public class MainFrame extends SimpleApplication {
                     for (int i=0;i<3;i++){temp[i]=Integer.parseInt(property[i]);}
                     initMineField(temp[0],temp[1],temp[2]);
                     guiNode.detachChild(modeWin);
-                    mainMenu.stop();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
+                    mainMenu.stop();initAudio();initScene();gameController.setMine_Left(mineField.getNumber());initHUD();
                 });
             });
         });
@@ -229,9 +231,10 @@ public class MainFrame extends SimpleApplication {
                 textField = introWin.addChild(
                         new TextField(
                                 """
-                                 a. 如果双方的分数差距大于游戏区中未揭晓的雷数，则直接判定优势方获胜
-                                 b. 如果在游戏中所有雷都被揭晓时双方分数依然相同，则失误数少的一方（失误包含误触雷以及标记错误）获胜
-                                 c. 如果失误数依然相同，则双方平局。"""
+                                        a.If the score gap between the two sides is greater than the undisclosed number of mines in the game area, the dominant side is determined to win.
+                                        b.If both players have the same score when all the mines are revealed, the player with the fewerrors (including the wrong touch and marking errors) wins.
+                                        c.If the number of errors is still the same, both sides draw.
+                                                 """
                         ));
                 textField.setSingleLine(false);
                 document = textField.getDocumentModel();
@@ -260,7 +263,6 @@ public class MainFrame extends SimpleApplication {
 
 
     private void initScene(){
-        initAudio();
         //load all the minefield
         for (int i =0;i< mineField.getRow();i++){
             for (int j=0;j< mineField.getCol();j++){
@@ -270,6 +272,7 @@ public class MainFrame extends SimpleApplication {
             }
         }
     }
+
     private void initAudio() {
         // 创建一个自然音效（背景），这个音源会一直循环播放。
         AudioNode audioNature = new AudioNode(assetManager, "main/resources/Audio/Background.wav", AudioData.DataType.Stream);
@@ -358,6 +361,7 @@ public class MainFrame extends SimpleApplication {
             //do what you want
             rootNode.detachChild(temp[row][col]);
             temp[row][col]=draw(row,col);
+            addListenerToSpatial(row,col);
             rootNode.attachChild(temp[row][col]);
         });
     }
@@ -448,11 +452,39 @@ public class MainFrame extends SimpleApplication {
         explosion.play();
         debris.emitAllParticles();
     }
-    public void makeVictory(){
+
+    public void checkvictory(){
+        if ((Math.max(gameController.getP1().getScore(),gameController.getP2().getScore()) - Math.min(gameController.getP1().getScore(),gameController.getP2().getScore())) > gameController.getMine_Left()){
+            if (gameController.getP1().getScore() > gameController.p2.getScore()){
+                makeVictory(gameController.p1, 1);
+            }
+            if (gameController.getP2().getScore() > gameController.getP1().getScore()){
+                makeVictory(gameController.p2, 1);
+            }
+        }
+        if (gameController.getMine_Left()==0){
+            if (gameController.getP1().getScore() == gameController.getP2().getScore()){
+                if (gameController.getP1().getMistake() < gameController.getP2().getMistake()){
+                    makeVictory(gameController.p1, 1);
+                }
+                if (gameController.getP1().getMistake() > gameController.getP2().getMistake()){
+                    makeVictory(gameController.p2, 1);
+                }
+                if (gameController.getP1().getMistake() == gameController.getP2().getMistake()){
+                    makeVictory(null,0);
+                }
+            }
+        }
+    }
+    public void makeVictory(Player winner,int situation){
         Container victoryFrame =new Container();
-        victoryFrame.center();
+        victoryFrame.center();victoryFrame.scale(5);
         victoryFrame.setLocalTranslation((float)(0.5*cam.getWidth()+0.5*victoryFrame.getSize().getX()), (float)(0.5*cam.getHeight()+0.5*victoryFrame.getSize().getY()),0);
-        victoryFrame.addChild(new Label("Victory"));
+        if (situation==0){victoryFrame.addChild(new Label("Draw"));}
+        if (situation==1){
+            victoryFrame.addChild(new Label("Victory"));
+            victoryFrame.addChild(new Label("The Winner Is "+winner.getUserName()));
+        }
 
         AudioNode victorySound = new AudioNode(assetManager, "main/resources/Audio/Cyka Blyat.wav", AudioData.DataType.Buffer);
         victorySound.setLooping(true);
@@ -523,6 +555,7 @@ public class MainFrame extends SimpleApplication {
             gameController.addOpenCount();
         }
         reDraw(i,j);
+        checkvictory();
         gameController.nextTurn();
         updateHUD();
         }
@@ -538,9 +571,11 @@ public class MainFrame extends SimpleApplication {
         }
         if (status[i][j].equals(Status.Covered_without_Mine)){
             gameController.getOnTurnPlayer().addMistake();
+            gameController.getOnTurnPlayer().costScore();
             status[i][j]=Status.Clear;
         }
         reDraw(i,j);
+        checkvictory();
         gameController.nextTurn();
         updateHUD();
     }
@@ -557,6 +592,7 @@ public class MainFrame extends SimpleApplication {
         updateHUD();
     }
     public void onNewGame(){
+        rootNode.detachAllChildren();
         simpleInitApp();
     }
 
@@ -569,11 +605,110 @@ public class MainFrame extends SimpleApplication {
          */
     public void readFileData(String fileName) {
         //todo: read date from file
+        BufferedReader br = null;
+        StringBuilder stringBuilder = new StringBuilder();
+        //读取游戏性质（除雷区）
+        String[] property = new String[10];
+        try {
+            br = new BufferedReader(new FileReader(fileName+".txt"));
+            String contentLine = br.readLine();
+            for (int i = 0; i < 10; i++){
+                while (contentLine != null){
+                    contentLine = br.readLine();
+                    property[i]=contentLine;
+                }
+            }
+
+            gameController.getP1().setUserName(property[0]);
+            gameController.getP1().setScore(Integer.parseInt(property[1]));
+            gameController.getP1().setMistake(Integer.parseInt(property[2]));
+            gameController.getP2().setUserName(property[3]);
+            gameController.getP2().setScore(Integer.parseInt(property[4]));
+            gameController.getP2().setMistake(Integer.parseInt(property[5]));
+            if (property[6].equals(gameController.getP1().getUserName())){
+                gameController.onTurn = gameController.p1;
+            }
+            if (property[6].equals(gameController.getP2().getUserName())){
+                gameController.onTurn = gameController.p2;
+            }
+            mineField=new MineGenerator(Integer.parseInt(property[7]),Integer.parseInt(property[8]),Integer.parseInt(property[9]));
+            mineField.setMineField();
+            //读取雷区
+            int[]readMine=new int[mineField.getRow()*mineField.getCol()];
+            for (int i = 0; i < mineField.getRow() * mineField.getCol(); i++){
+                while (contentLine != null){
+                    contentLine = br.readLine();
+                    readMine[i]=Integer.parseInt(contentLine);
+                }
+            }
+
+            for (int i = 0; i < mineField.getRow(); i++){
+                for (int j = 0; j < mineField.getCol(); j++){
+                    int data=readMine[mineField.getCol()*i+j];
+                    if (data<0){
+                        mineField.Mine[i][j] = -1;
+                        if (data==-1){status[i][j]=Status.Covered_with_Mine;}
+                        if (data==-2){status[i][j]=Status.Flag;}
+                        if (data==-3){status[i][j]=Status.Mine;}
+                    }
+                    if (data>10){mineField.Mine[i][j] = data-10;status[i][j]=Status.Clear;}
+                    else {mineField.Mine[i][j] = data;status[i][j]=Status.Covered_without_Mine;}
+                }
+            }
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 
-    public void writeDataToFile(String fileName){//todo: write data into file
+    public void writeDataToFile(String fileName){
+        //todo: write data into file
+        try {
+            File f = new File(fileName+".txt");
+            FileWriter fw = new FileWriter(f,true);
+            fw.write(gameController.getP1().getUserName()+"\n");
+            fw.write(gameController.getP1().getScore()+"\n");
+            fw.write(gameController.getP1().getMistake()+"\n");
+            fw.write(gameController.getP2().getUserName()+"\n");
+            fw.write(gameController.getP2().getScore()+"\n");
+            fw.write(gameController.getP2().getMistake()+"\n");
+            fw.write(gameController.getOnTurnPlayer().getUserName()+"\n");
+            fw.write(mineField.getRow()+"\n");
+            fw.write(mineField.getCol()+"\n");
+            fw.write(mineField.getNumber()+"\n");
 
+            int[][] data = new int[mineField.getRow()][mineField.getCol()];
+            for (int i = 0; i < mineField.getRow(); i++){
+                for (int j = 0; j < mineField.getCol(); j++){
+                    if (status[i][j] == Status.Covered_with_Mine) {
+                        data[i][j] = -1;
+                    }
+                    if (status[i][j] == Status.Covered_without_Mine) {
+                        data[i][j] = mineField.getMine()[i][j];
+                    }
+                    if (status[i][j] == Status.Flag) {
+                        data[i][j] = -2;
+                    }
+                    if (status[i][j] == Status.Clear) {
+                        data[i][j] = mineField.getMine()[i][j] + 10;
+                    }
+                    if (status[i][j] == Status.Mine) {
+                        data[i][j] = -3;
+                    }
+                }
+            }
+
+            for (int i = 0; i < mineField.getRow(); i++){
+                for (int j = 0; j < mineField.getCol(); j++){
+                    fw.write(data[i][j] + "\n");
+                }
+            }
+            fw.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 

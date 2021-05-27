@@ -4,7 +4,7 @@ public class MineGenerator {
     private int row=9;
     private int col=9;
     private int number=10;
-    private int [][]Mine;
+    public int [][]Mine;
     private Status[][]MineField;
     private final Random random = new Random();
 

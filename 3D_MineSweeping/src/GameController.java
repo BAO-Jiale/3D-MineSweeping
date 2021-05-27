@@ -23,12 +23,9 @@ public class GameController {
         } else if (onTurn == p2) {
             onTurn = p1;
         }
-        System.out.println("Now it is " + onTurn.getUserName() + "'s turn.");
-
-        //scoreBoard.update();
-        //TODO: 在每个回合结束的时候，还需要做什么 (例如...检查游戏是否结束？)
-
-
+        if (onTurn != null){
+            System.out.println("Now it is " + onTurn.getUserName() + "'s turn.");
+        }
     }
 
     public Player getOnTurnPlayer() {
